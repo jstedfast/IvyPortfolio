@@ -61,6 +61,8 @@ namespace IvyPortfolio
 		static readonly short LightBlue = IndexedColors.Aqua.Index;
 		static readonly short LightGrey = IndexedColors.Grey25Percent.Index;
 
+		static readonly DateTime UnixEpoch = new DateTime (1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+
 		public static void Main (string[] args)
 		{
 			//string[] symbols = { "BND", "DBC", "GSG", "RWX", "VNQ", "TIP", "VWO", "VEU", "VB", "VTI" };
@@ -85,7 +87,7 @@ namespace IvyPortfolio
 
 		static void GetDateRange (out DateTime start, out DateTime end)
 		{
-			var today = DateTime.Today;
+			var today = DateTime.Today.ToUniversalTime ();
 
 			if (today.Day < DateTime.DaysInMonth (today.Year, today.Month))
 				end = today.AddDays (-1 * today.Day);
@@ -459,7 +461,7 @@ namespace IvyPortfolio
 
 		static async Task<string> GetStockDescription (HttpClient client, string symbol)
 		{
-			const string format = "http://finance.yahoo.com/quote/{0}/history?p={0}";
+			const string format = "https://finance.yahoo.com/quote/{0}/history?p={0}";
 			var requestUri = string.Format (format, symbol);
 
 			var html = await client.GetStringAsync (requestUri);
@@ -486,9 +488,11 @@ namespace IvyPortfolio
 		static async Task<string> GetStockData (HttpClient client, string symbol, DateTime start, DateTime end)
 		{
 			const string format = "https://query1.finance.yahoo.com/v7/finance/download/{0}?period1={1}&period2={2}&interval=1d&events=history&crumb=27yjCQn4aot";
-			var requestUri = string.Format (format, symbol, start.Ticks, end.Ticks);
+			var requestUri = string.Format (format, symbol, (start - UnixEpoch).TotalSeconds, (end - UnixEpoch).TotalSeconds);
 
-			return await client.GetStringAsync (requestUri);
+			var data = await client.GetStringAsync (requestUri);
+
+			return data;
 		}
 
 		static async Task<ISheet> CreateSheet (HttpClient client, IWorkbook workbook, IFont font, string symbol, DateTime start, DateTime end)
