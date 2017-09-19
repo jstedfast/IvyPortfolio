@@ -171,7 +171,7 @@ namespace IvyPortfolio
 			// Create the "Invested" formatting rule
 			rule = formatting.CreateConditionalFormattingRule (ComparisonOperator.Equal, "\"Invested\"");
 			pattern = rule.CreatePatternFormatting ();
-			pattern.FillPattern = (short) FillPattern.SolidForeground;
+			pattern.FillPattern = FillPattern.SolidForeground;
 			pattern.FillBackgroundColor = Green;
 
 			rules[index++] = rule;
@@ -179,7 +179,7 @@ namespace IvyPortfolio
 			// Create the "Cash" formatting rule
 			rule = formatting.CreateConditionalFormattingRule (ComparisonOperator.Equal, "\"Cash\"");
 			pattern = rule.CreatePatternFormatting ();
-			pattern.FillPattern = (short) FillPattern.SolidForeground;
+			pattern.FillPattern = FillPattern.SolidForeground;
 			pattern.FillBackgroundColor = Red;
 
 			font = rule.CreateFontFormatting ();
@@ -202,7 +202,7 @@ namespace IvyPortfolio
 			// Add the "Invest" formatting
 			rule = formatting.CreateConditionalFormattingRule (ComparisonOperator.GreaterThan, "2");
 			pattern = rule.CreatePatternFormatting ();
-			pattern.FillPattern = (short) FillPattern.SolidForeground;
+			pattern.FillPattern = FillPattern.SolidForeground;
 			pattern.FillBackgroundColor = LightGreen;
 
 			rules[index++] = rule;
@@ -210,7 +210,7 @@ namespace IvyPortfolio
 			// Add the "Neutral" formatting
 			rule = formatting.CreateConditionalFormattingRule (ComparisonOperator.Between, "-2", "2");
 			pattern = rule.CreatePatternFormatting ();
-			pattern.FillPattern = (short) FillPattern.SolidForeground;
+			pattern.FillPattern = FillPattern.SolidForeground;
 			pattern.FillBackgroundColor = LightYellow;
 
 			rules[index++] = rule;
@@ -218,7 +218,7 @@ namespace IvyPortfolio
 			// Add the "Sell" formatting
 			rule = formatting.CreateConditionalFormattingRule (ComparisonOperator.LessThan, "-2");
 			pattern = rule.CreatePatternFormatting ();
-			pattern.FillPattern = (short) FillPattern.SolidForeground;
+			pattern.FillPattern = FillPattern.SolidForeground;
 			pattern.FillBackgroundColor = LightRed;
 
 			rules[index++] = rule;
