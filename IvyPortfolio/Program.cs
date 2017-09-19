@@ -26,10 +26,12 @@
 
 using System;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 using NPOI.SS.Util;
 using NPOI.HSSF.Util;
@@ -62,14 +64,21 @@ namespace IvyPortfolio
 		static readonly short LightGrey = IndexedColors.Grey25Percent.Index;
 
 		static readonly DateTime UnixEpoch = new DateTime (1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+		static readonly Regex CrumbRegex = new Regex ("CrumbStore\":{\"crumb\":\"(?<crumb>.+?)\"}", RegexOptions.CultureInvariant | RegexOptions.Compiled);
+		static string cookie = null;
+		static string crumb = null;
 
 		public static void Main (string[] args)
 		{
 			//string[] symbols = { "BND", "DBC", "GSG", "RWX", "VNQ", "TIP", "VWO", "VEU", "VB", "VTI" };
 			string[] etf_symbols = { "VTI", "VEU", "BND", "VNQ", "VDC", "VDE", "VPU", "VGELX", "VGPMX" };
 			string[] mutf_symbols = { "VTSAX", "VFWAX", "VBTLX", "VGSLX", "VGELX", "VGPMX" };
+			var handler = new HttpClientHandler ();
 
-			using (var client = new HttpClient ()) {
+			handler.CookieContainer = new CookieContainer ();
+			handler.UseCookies = true;
+
+			using (var client = new HttpClient (handler)) {
 				CreateSpreadsheet (client, "Investment Portfolio (MUTF).xlsx", mutf_symbols).GetAwaiter ().GetResult ();
 				CreateSpreadsheet (client, "Investment Portfolio (ETF).xlsx", etf_symbols).GetAwaiter ().GetResult ();
 			}
@@ -461,11 +470,21 @@ namespace IvyPortfolio
 
 		static async Task<string> GetStockDescription (HttpClient client, string symbol)
 		{
-			const string format = "https://finance.yahoo.com/quote/{0}/history?p={0}";
+			const string format = "https://finance.yahoo.com/quote/{0}?p={0}";
 			var requestUri = string.Format (format, symbol);
 
 			var html = await client.GetStringAsync (requestUri);
 			int startIndex, endIndex;
+
+			// extract the cookie crumb
+			var crumbs = CrumbRegex.Matches (html);
+
+			if (crumbs.Count > 0) {
+				crumb = crumbs[0].Groups["crumb"].Value;
+				crumb = crumb.Replace ("\\u002F", "/");
+			} else {
+				crumb = "xxxxxxxxxxx";
+			}
 
 			if ((endIndex = html.IndexOf ("(" + symbol + ")", StringComparison.Ordinal)) <= 0) {
 				Console.WriteLine ("Failed to locate \"({0})\" in:", symbol);
@@ -487,12 +506,22 @@ namespace IvyPortfolio
 
 		static async Task<string> GetStockData (HttpClient client, string symbol, DateTime start, DateTime end)
 		{
-			const string format = "https://query1.finance.yahoo.com/v7/finance/download/{0}?period1={1}&period2={2}&interval=1d&events=history&crumb=27yjCQn4aot";
-			var requestUri = string.Format (format, symbol, (start - UnixEpoch).TotalSeconds, (end - UnixEpoch).TotalSeconds);
+			const string format = "https://query1.finance.yahoo.com/v7/finance/download/{0}?period1={1}&period2={2}&interval=1d&events=history&crumb={3}";
+			var requestUri = string.Format (format, symbol, (start - UnixEpoch).TotalSeconds, (end - UnixEpoch).TotalSeconds, crumb);
 
 			var data = await client.GetStringAsync (requestUri);
 
 			return data;
+		}
+
+		static bool IsNull (string[] data)
+		{
+			for (int i = 1; i < data.Length; i++) {
+				if (data[i] == "null")
+					return true;
+			}
+
+			return false;
 		}
 
 		static async Task<ISheet> CreateSheet (HttpClient client, IWorkbook workbook, IFont font, string symbol, DateTime start, DateTime end)
@@ -517,6 +546,7 @@ namespace IvyPortfolio
 			using (var reader = new StringReader (csv)) {
 				var columnNames = reader.ReadLine ().Split (',');
 				var endOfMonthRows = new List<int> ();
+				var lines = new List<string> ();
 				var row = sheet.CreateRow (0);
 				int previousMonth = -1;
 				var columnIndex = 0;
@@ -548,9 +578,17 @@ namespace IvyPortfolio
 				cell.SetCellValue ("12 Month SMA");
 				cell.CellStyle = hstyle;
 
-				while ((line = reader.ReadLine ()) != null) {
-					var data = line.Split (',');
+				// The data is sorted such that the latest data is at the end
+				while ((line = reader.ReadLine ()) != null)
+					lines.Add (line);
+
+				// Read the data in reverse
+				for (int i = lines.Count - 1; i >= 0; i--) {
+					var data = lines[i].Split (',');
 					DateTime date;
+
+					if (IsNull (data))
+						continue;
 
 					row = sheet.CreateRow (rowIndex++);
 					columnIndex = 0;
@@ -575,29 +613,29 @@ namespace IvyPortfolio
 				}
 
 				// Set the formula for the 200-Day SMA cells
-				for (int j = 1; j < rowIndex - 200; j++) {
-					row = sheet.GetRow (j);
+				for (int i = 1; i < rowIndex - 200; i++) {
+					row = sheet.GetRow (i);
 
 					cell = row.CreateCell ((int) DataColumn.SMA200Day, CellType.Formula);
-					cell.SetCellFormula (string.Format ("AVERAGE({0}{1}:{0}{2})", (char) ('A' + DataColumn.AdjClose), j + 1, j + 201));
+					cell.SetCellFormula (string.Format ("AVERAGE({0}{1}:{0}{2})", (char) ('A' + DataColumn.AdjClose), i + 1, i + 201));
 					cell.CellStyle = style;
 				}
 
 				// Set the formulas for the 10-Month and 12-Month SMA cells
-				for (int j = 0; j < endOfMonthRows.Count - 12; j++) {
+				for (int i = 0; i < endOfMonthRows.Count - 12; i++) {
 					var items = new List<string> ();
 
-					row = sheet.GetRow (endOfMonthRows[j]);
+					row = sheet.GetRow (endOfMonthRows[i]);
 
 					cell = row.CreateCell ((int) DataColumn.SMA10Month, CellType.Formula);
 					for (int k = 0; k < 10; k++)
-						items.Add (string.Format ("{0}{1}", (char) ('A' + DataColumn.AdjClose), endOfMonthRows[j + k] + 1));
+						items.Add (string.Format ("{0}{1}", (char) ('A' + DataColumn.AdjClose), endOfMonthRows[i + k] + 1));
 					cell.SetCellFormula (string.Format ("AVERAGE({0})", string.Join (", ", items)));
 					cell.CellStyle = style;
 
 					cell = row.CreateCell ((int) DataColumn.SMA12Month, CellType.Formula);
 					for (int k = 0; k < 2; k++)
-						items.Add (string.Format ("{0}{1}", (char) ('A' + DataColumn.AdjClose), endOfMonthRows[j + 10 + k] + 1));
+						items.Add (string.Format ("{0}{1}", (char) ('A' + DataColumn.AdjClose), endOfMonthRows[i + 10 + k] + 1));
 					cell.SetCellFormula (string.Format ("AVERAGE({0})", string.Join (", ", items)));
 					cell.CellStyle = style;
 				}
