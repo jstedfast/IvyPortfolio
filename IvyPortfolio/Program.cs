@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2016 Jeffrey Stedfast
+// Copyright (c) 2016-2018 Jeffrey Stedfast
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,6 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using Google.Apis.Services;
-using Google.Apis.Util.Store;
 
 namespace IvyPortfolio
 {
@@ -76,16 +75,18 @@ namespace IvyPortfolio
 
 		public static void Main (string[] args)
 		{
-			//string[] symbols = { "BND", "DBC", "GSG", "RWX", "VNQ", "TIP", "VWO", "VEU", "VB", "VTI" };
-			string[] etf_symbols = { "VTI", "VEU", "BND", "VNQ", "VDC", "VDE", "VPU", "VGELX", "VGPMX" };
-			string[] mutf_symbols = { "VTSAX", "VFWAX", "VBTLX", "VGSLX", "VGELX", "VGPMX" };
+			var home = Environment.GetFolderPath (Environment.SpecialFolder.Personal);
+			var dataDir = Path.Combine (home, "Dropbox", "IvyPortfolio");
 			string[] scopes = { SheetsService.Scope.Spreadsheets };
+			var map = LoadGoogleSheetMappings (dataDir);
 			var handler = new HttpClientHandler ();
 			UserCredential credential;
 
-			using (var stream = File.OpenRead ("credentials.json")) {
+			using (var stream = File.OpenRead (Path.Combine (dataDir, "credentials.json"))) {
+				var login = File.ReadAllText (Path.Combine (dataDir, "login.txt")).Trim ();
+
 				credential = GoogleWebAuthorizationBroker.AuthorizeAsync (
-					GoogleClientSecrets.Load (stream).Secrets, scopes,
+					GoogleClientSecrets.Load (stream).Secrets, scopes, login,
 					CancellationToken.None).GetAwaiter ().GetResult ();
 			}
 
@@ -100,13 +101,54 @@ namespace IvyPortfolio
 
 			using (var client = new HttpClient (handler)) {
 				XSSFWorkbook workbook;
+				string[] symbols;
+				string fileName;
+				string id;
 
-				workbook = CreateSpreadsheet (client, "Investment Portfolio (MUTF).xlsx", mutf_symbols).GetAwaiter ().GetResult ();
-				UpdateGoogleSpreadsheet (service, "1CvdNr3ViDUsYRYd7ynuFuFrZ8xm1SmF3fKlFYM8eiwI", workbook);
+				symbols = new string[] { "VTSAX", "VFWAX", "VBTLX", "VGSLX", "VGELX", "VGPMX" };
+				fileName = "Investment Portfolio (MUTF)";
 
-				workbook = CreateSpreadsheet (client, "Investment Portfolio (ETF).xlsx", etf_symbols).GetAwaiter ().GetResult ();
-				UpdateGoogleSpreadsheet (service, "1ea479PlsHuMFoULBGKjMM1VJKjMkObcTY2e3ONykHWc", workbook);
+				workbook = CreateSpreadsheet (client, fileName + ".xlsx", symbols).GetAwaiter ().GetResult ();
+				if (map.TryGetValue (fileName, out id))
+					UpdateGoogleSpreadsheet (service, id, workbook);
+
+				symbols = new string[] { "VTI", "VEU", "BND", "VNQ", "VDC", "VDE", "VPU", "VGELX", "VGPMX" };
+				fileName = "Investment Portfolio (ETF)";
+
+				workbook = CreateSpreadsheet (client, fileName + ".xlsx", symbols).GetAwaiter ().GetResult ();
+				if (map.TryGetValue (fileName, out id))
+					UpdateGoogleSpreadsheet (service, id, workbook);
+
+				//symbols = { "BND", "DBC", "GSG", "RWX", "VNQ", "TIP", "VWO", "VEU", "VB", "VTI" };
+				//fileName = "Investment Portfolio (TEST)";
+
+				//workbook = CreateSpreadsheet (client, fileName + ".xlsx", symbols).GetAwaiter ().GetResult ();
+				//if (docmap.TryGetValue (fileName, out id))
+				//	UpdateGoogleSpreadsheet (service, id, workbook);
 			}
+		}
+
+		static Dictionary<string, string> LoadGoogleSheetMappings (string dataDir)
+		{
+			var path = Path.Combine (dataDir, "document-map.txt");
+			var map = new Dictionary<string, string> ();
+
+			if (File.Exists (path)) {
+				using (var reader = File.OpenText (path)) {
+					string line;
+
+					while ((line = reader.ReadLine ()) != null) {
+						var kvp = line.TrimEnd ().Split (new char[] { ' ' }, 2);
+
+						if (kvp.Length < 2)
+							continue;
+
+						map[kvp[1]] = kvp[0];
+					}
+				}
+			}
+
+			return map;
 		}
 
 		static void UpdateGoogleSpreadsheet (SheetsService service, string spreadsheetId, XSSFWorkbook workbook)
