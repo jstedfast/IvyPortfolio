@@ -103,7 +103,7 @@ namespace IvyPortfolio
 			else
 				end = today;
 
-			start = end.AddYears (-5);
+			start = end.AddYears (-4);
 		}
 
 		static async Task CreateSpreadsheet (HttpClient client, IWorkbook workbook, string[] symbols)
@@ -547,14 +547,20 @@ namespace IvyPortfolio
 				var columnNames = reader.ReadLine ().Split (',');
 				var endOfMonthRows = new List<int> ();
 				var lines = new List<string> ();
-				var row = sheet.CreateRow (0);
 				int previousMonth = -1;
 				var columnIndex = 0;
 				var rowIndex = 1;
 				string line;
 				ICell cell;
+				IRow row;
+
+				for (int i = sheet.LastRowNum; i > 0; i--) {
+					row = sheet.GetRow (i - 1);
+					sheet.RemoveRow (row);
+				}
 
 				// Add the Titles for the data columns
+				row = sheet.CreateRow (0);
 				while (columnIndex < columnNames.Length) {
 					cell = row.CreateCell (columnIndex, CellType.String);
 					cell.SetCellValue (columnNames[columnIndex]);
