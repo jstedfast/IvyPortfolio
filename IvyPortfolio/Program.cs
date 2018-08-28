@@ -28,6 +28,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -39,6 +40,12 @@ using NPOI.XSSF.Util;
 using NPOI.SS.UserModel;
 using NPOI.HSSF.UserModel;
 using NPOI.XSSF.UserModel;
+
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Sheets.v4;
+using Google.Apis.Sheets.v4.Data;
+using Google.Apis.Services;
+using Google.Apis.Util.Store;
 
 namespace IvyPortfolio
 {
@@ -65,26 +72,84 @@ namespace IvyPortfolio
 
 		static readonly DateTime UnixEpoch = new DateTime (1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
 		static readonly Regex CrumbRegex = new Regex ("CrumbStore\":{\"crumb\":\"(?<crumb>.+?)\"}", RegexOptions.CultureInvariant | RegexOptions.Compiled);
-		static string cookie = null;
-		static string crumb = null;
+		static string crumb;
 
 		public static void Main (string[] args)
 		{
 			//string[] symbols = { "BND", "DBC", "GSG", "RWX", "VNQ", "TIP", "VWO", "VEU", "VB", "VTI" };
 			string[] etf_symbols = { "VTI", "VEU", "BND", "VNQ", "VDC", "VDE", "VPU", "VGELX", "VGPMX" };
 			string[] mutf_symbols = { "VTSAX", "VFWAX", "VBTLX", "VGSLX", "VGELX", "VGPMX" };
+			string[] scopes = { SheetsService.Scope.Spreadsheets };
 			var handler = new HttpClientHandler ();
+			UserCredential credential;
+
+			using (var stream = File.OpenRead ("credentials.json")) {
+				credential = GoogleWebAuthorizationBroker.AuthorizeAsync (
+					GoogleClientSecrets.Load (stream).Secrets, scopes,
+					CancellationToken.None).GetAwaiter ().GetResult ();
+			}
+
+			// Create Google Sheets API service.
+			var service = new SheetsService (new BaseClientService.Initializer {
+				HttpClientInitializer = credential,
+				ApplicationName = "IvyPortfolio"
+			});
 
 			handler.CookieContainer = new CookieContainer ();
 			handler.UseCookies = true;
 
 			using (var client = new HttpClient (handler)) {
-				CreateSpreadsheet (client, "Investment Portfolio (MUTF).xlsx", mutf_symbols).GetAwaiter ().GetResult ();
-				CreateSpreadsheet (client, "Investment Portfolio (ETF).xlsx", etf_symbols).GetAwaiter ().GetResult ();
+				XSSFWorkbook workbook;
+
+				workbook = CreateSpreadsheet (client, "Investment Portfolio (MUTF).xlsx", mutf_symbols).GetAwaiter ().GetResult ();
+				UpdateGoogleSpreadsheet (service, "1CvdNr3ViDUsYRYd7ynuFuFrZ8xm1SmF3fKlFYM8eiwI", workbook);
+
+				workbook = CreateSpreadsheet (client, "Investment Portfolio (ETF).xlsx", etf_symbols).GetAwaiter ().GetResult ();
+				UpdateGoogleSpreadsheet (service, "1ea479PlsHuMFoULBGKjMM1VJKjMkObcTY2e3ONykHWc", workbook);
 			}
 		}
 
-		static async Task CreateSpreadsheet (HttpClient client, string fileName, string[] symbols)
+		static void UpdateGoogleSpreadsheet (SheetsService service, string spreadsheetId, XSSFWorkbook workbook)
+		{
+			// Sheet1 = Dashboard, Sheet2 = Charts
+			for (int index = 2; index < workbook.NumberOfSheets; index++) {
+				var sheet = workbook.GetSheetAt (index);
+				var values = new List<IList<object>> ();
+
+				for (int i = 0; i < sheet.LastRowNum; i++) {
+					var row = sheet.GetRow (i);
+
+					values.Add (new List<object> ());
+					for (int j = 0; j < row.LastCellNum; j++) {
+						var cell = row.GetCell (j, MissingCellPolicy.RETURN_BLANK_AS_NULL);
+
+						if (cell == null)
+							break;
+
+						string value;
+
+						switch (cell.CellType) {
+						case CellType.String: value = cell.StringCellValue; break;
+						case CellType.Numeric: value = cell.NumericCellValue.ToString (); break;
+						case CellType.Formula: value = "=" + cell.CellFormula; break;
+						default: value = string.Empty; break;
+						}
+
+						values[i].Add (value);
+					}
+				}
+
+				var range = string.Format ("{0}!A1:J", sheet.SheetName);
+				var body = new ValueRange { Values = values };
+
+				var request = service.Spreadsheets.Values.Update (body, spreadsheetId, range);
+				request.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+
+				var response = request.Execute ();
+			}
+		}
+
+		static async Task<XSSFWorkbook> CreateSpreadsheet (HttpClient client, string fileName, string[] symbols)
 		{
 			var workbook = new XSSFWorkbook ();
 
@@ -92,6 +157,8 @@ namespace IvyPortfolio
 
 			using (var stream = File.Create (fileName))
 				workbook.Write (stream);
+
+			return workbook;
 		}
 
 		static void GetDateRange (out DateTime start, out DateTime end)
