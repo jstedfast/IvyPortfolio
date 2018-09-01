@@ -138,6 +138,9 @@ namespace IvyPortfolio
 					string line;
 
 					while ((line = reader.ReadLine ()) != null) {
+						if (line.Length == 0 || line[0] == '#')
+							continue;
+
 						var kvp = line.TrimEnd ().Split (new char[] { ' ' }, 2);
 
 						if (kvp.Length < 2)
@@ -161,24 +164,27 @@ namespace IvyPortfolio
 				for (int i = 0; i < sheet.LastRowNum; i++) {
 					var row = sheet.GetRow (i);
 
-					values.Add (new List<object> ());
+					values.Add (new object[10]);
 					for (int j = 0; j < row.LastCellNum; j++) {
 						var cell = row.GetCell (j, MissingCellPolicy.RETURN_BLANK_AS_NULL);
-
-						if (cell == null)
-							break;
-
 						string value;
 
-						switch (cell.CellType) {
-						case CellType.String: value = cell.StringCellValue; break;
-						case CellType.Numeric: value = cell.NumericCellValue.ToString (); break;
-						case CellType.Formula: value = "=" + cell.CellFormula; break;
-						default: value = string.Empty; break;
+						if (cell != null) {
+							switch (cell.CellType) {
+							case CellType.String: value = cell.StringCellValue; break;
+							case CellType.Numeric: value = cell.NumericCellValue.ToString (); break;
+							case CellType.Formula: value = "=" + cell.CellFormula; break;
+							default: value = string.Empty; break;
+							}
+						} else {
+							value = string.Empty;
 						}
 
-						values[i].Add (value);
+						values[i][j] = value;
 					}
+
+					for (int j = row.LastCellNum; j < 10; j++)
+						values[i][j] = string.Empty;
 				}
 
 				var range = string.Format ("{0}!A1:J", sheet.SheetName);
