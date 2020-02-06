@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2016-2018 Jeffrey Stedfast
+// Copyright (c) 2016-2020 Jeffrey Stedfast
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -112,7 +112,7 @@ namespace IvyPortfolio
 				if (map.TryGetValue (fileName, out id))
 					UpdateGoogleSpreadsheet (service, id, workbook);
 
-				symbols = new string[] { "VTI", "VEU", "BND", "VNQ", "VDC", "VDE", "VPU", "VGELX", "VGPMX" };
+				symbols = new string[] { "VTI", "VEU", "BND", "VNQ", "VDC", "VDE", "VPU", "VHT" };
 				fileName = "Investment Portfolio (ETF)";
 
 				workbook = CreateSpreadsheet (client, fileName + ".xlsx", symbols).GetAwaiter ().GetResult ();
@@ -552,7 +552,7 @@ namespace IvyPortfolio
 			fundStyle.BorderTop = BorderStyle.Thin;
 			fundStyle.SetFont (font);
 
-			nameStyle.Alignment = HorizontalAlignment.Center;
+			nameStyle.Alignment = HorizontalAlignment.Left;
 			nameStyle.BorderBottom = BorderStyle.Thin;
 			nameStyle.BorderRight = BorderStyle.Thin;
 			nameStyle.BorderLeft = BorderStyle.Thin;
