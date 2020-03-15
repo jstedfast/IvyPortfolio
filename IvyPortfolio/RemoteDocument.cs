@@ -1,5 +1,5 @@
 ﻿//
-// DataColumn.cs
+// RemoteDocument.cs
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
@@ -24,19 +24,16 @@
 // THE SOFTWARE.
 //
 
+using Newtonsoft.Json;
+
 namespace IvyPortfolio
 {
-	enum DataColumn
+	public class RemoteDocument
 	{
-		Date,
-		Open,
-		High,
-		Low,
-		Close,
-		AdjClose,
-		Volume,
-		SMA200Day,
-		SMA10Month,
-		SMA12Month,
+		[JsonProperty ("account")]
+		public string Account { get; set; }
+
+		[JsonProperty ("identifier")]
+		public string Identifier { get; set; }
 	}
 }

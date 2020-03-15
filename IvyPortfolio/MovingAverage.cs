@@ -1,5 +1,5 @@
 ﻿//
-// DataColumn.cs
+// MovingAverage.cs
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
@@ -24,19 +24,42 @@
 // THE SOFTWARE.
 //
 
+using System;
+using Newtonsoft.Json;
+
 namespace IvyPortfolio
 {
-	enum DataColumn
+	public enum MovingAverage
 	{
-		Date,
-		Open,
-		High,
-		Low,
-		Close,
-		AdjClose,
-		Volume,
-		SMA200Day,
-		SMA10Month,
-		SMA12Month,
+		Simple200Day  = 1,
+		Simple10Month = 2,
+		Simple12Month = 3
+	}
+
+	public class MovingAverageConverter : JsonConverter<MovingAverage>
+	{
+		public override MovingAverage ReadJson (JsonReader reader, Type objectType, MovingAverage existingValue, bool hasExistingValue, JsonSerializer serializer)
+		{
+			MovingAverage movingAverage;
+
+			if (reader.Value == null)
+				return 0;
+
+			var value = reader.Value.ToString ();
+			if (Enum.TryParse (value, out movingAverage))
+				return movingAverage;
+
+			switch (value.ToLowerInvariant ()) {
+			case "200-day": return MovingAverage.Simple200Day;
+			case "10-month": return MovingAverage.Simple10Month;
+			case "12-month": return MovingAverage.Simple12Month;
+			default: return 0;
+			}
+		}
+
+		public override void WriteJson (JsonWriter writer, MovingAverage value, JsonSerializer serializer)
+		{
+			throw new NotImplementedException ();
+		}
 	}
 }

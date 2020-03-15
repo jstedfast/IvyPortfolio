@@ -1,5 +1,5 @@
 ﻿//
-// DataColumn.cs
+// Document.cs
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
@@ -24,19 +24,22 @@
 // THE SOFTWARE.
 //
 
+using Newtonsoft.Json;
+
 namespace IvyPortfolio
 {
-	enum DataColumn
+	public class Document
 	{
-		Date,
-		Open,
-		High,
-		Low,
-		Close,
-		AdjClose,
-		Volume,
-		SMA200Day,
-		SMA10Month,
-		SMA12Month,
+		[JsonProperty ("filename")]
+		public string FileName { get; set; }
+
+		[JsonProperty ("symbols")]
+		public string[] Symbols { get; set; }
+
+		[JsonProperty ("moving-averages")]
+		public MovingAverage[] MovingAverages { get; set; }
+
+		[JsonProperty ("remote-documents")]
+		public RemoteDocument[] RemoteDocuments { get; set; }
 	}
 }

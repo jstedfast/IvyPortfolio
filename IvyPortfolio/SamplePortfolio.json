@@ -1,0 +1,37 @@
+﻿{
+	"accounts": [
+		{
+			"name": "username@gmail.com",
+			"type": "Google",
+			"credentials": "credentials.json"
+		}
+	],
+	"documents": [
+		{
+			"remote-documents": [
+				{
+					"account": "username@gmail.com",
+					"identifier": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+				}
+			],
+			"filename": "Investment Portfolio.xlsx",
+			"symbols": [
+				"BND",
+				"DBC",
+				"GSG",
+				"RWX",
+				"VNQ",
+				"TIP",
+				"VWO",
+				"VEU",
+				"VB",
+				"VTI"
+			],
+			"moving-averages": [
+				"200-Day",
+				"10-Month",
+				"12-Month"
+			]
+		}
+	]
+}

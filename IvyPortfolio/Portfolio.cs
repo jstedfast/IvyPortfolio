@@ -1,5 +1,5 @@
 ﻿//
-// DataColumn.cs
+// MovingAverage.cs
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
@@ -26,17 +26,9 @@
 
 namespace IvyPortfolio
 {
-	enum DataColumn
+	public class Portfolio
 	{
-		Date,
-		Open,
-		High,
-		Low,
-		Close,
-		AdjClose,
-		Volume,
-		SMA200Day,
-		SMA10Month,
-		SMA12Month,
+		public Account[] Accounts { get; set; }
+		public Document[] Documents { get; set; }
 	}
 }

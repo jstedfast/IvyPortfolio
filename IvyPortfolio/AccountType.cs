@@ -1,5 +1,5 @@
 ﻿//
-// DataColumn.cs
+// AccountType.cs
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
@@ -26,17 +26,9 @@
 
 namespace IvyPortfolio
 {
-	enum DataColumn
+	public enum AccountType
 	{
-		Date,
-		Open,
-		High,
-		Low,
-		Close,
-		AdjClose,
-		Volume,
-		SMA200Day,
-		SMA10Month,
-		SMA12Month,
+		Google    = 1,
+		Office365 = 2
 	}
 }

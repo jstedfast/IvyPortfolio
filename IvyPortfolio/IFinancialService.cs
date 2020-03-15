@@ -1,5 +1,5 @@
 ﻿//
-// DataColumn.cs
+// IFinancialService.cs
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
@@ -24,19 +24,16 @@
 // THE SOFTWARE.
 //
 
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace IvyPortfolio
 {
-	enum DataColumn
+	public interface IFinancialService : IDisposable
 	{
-		Date,
-		Open,
-		High,
-		Low,
-		Close,
-		AdjClose,
-		Volume,
-		SMA200Day,
-		SMA10Month,
-		SMA12Month,
+		Task<string> GetStockDescriptionAsync (string symbol, CancellationToken cancellationToken);
+
+		Task<string> GetStockDataAsync (string symbol, DateTime start, DateTime end, CancellationToken cancellationToken);
 	}
 }
