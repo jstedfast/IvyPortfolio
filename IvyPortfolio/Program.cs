@@ -112,7 +112,7 @@ namespace IvyPortfolio
 				if (map.TryGetValue (fileName, out id))
 					UpdateGoogleSpreadsheet (service, id, workbook);
 
-				symbols = new string[] { "VTI", "VEU", "BND", "VNQ", "VDC", "VDE", "VPU", "VHT" };
+				symbols = new string[] { "VTI", "VEU", "BND", "VOX", "VCR", "VDC", "VDE", "VFH", "VHT", "VIS", "VAW", "VNQ", "VGT", "VPU" };
 				fileName = "Investment Portfolio (ETF)";
 
 				workbook = CreateSpreadsheet (client, fileName + ".xlsx", symbols).GetAwaiter ().GetResult ();
