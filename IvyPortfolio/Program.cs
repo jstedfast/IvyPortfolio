@@ -77,6 +77,12 @@ namespace IvyPortfolio
 		{
 			var home = Environment.GetFolderPath (Environment.SpecialFolder.Personal);
 			var dataDir = Path.Combine (home, "Dropbox", "IvyPortfolio");
+
+			RunAsync (dataDir).GetAwaiter ().GetResult ();
+		}
+
+		static async Task RunAsync (string dataDir)
+		{
 			string[] scopes = { SheetsService.Scope.Spreadsheets };
 			var map = LoadGoogleSheetMappings (dataDir);
 			var handler = new HttpClientHandler ();
@@ -85,9 +91,9 @@ namespace IvyPortfolio
 			using (var stream = File.OpenRead (Path.Combine (dataDir, "credentials.json"))) {
 				var login = File.ReadAllText (Path.Combine (dataDir, "login.txt")).Trim ();
 
-				credential = GoogleWebAuthorizationBroker.AuthorizeAsync (
+				credential = await GoogleWebAuthorizationBroker.AuthorizeAsync (
 					GoogleClientSecrets.Load (stream).Secrets, scopes, login,
-					CancellationToken.None).GetAwaiter ().GetResult ();
+					CancellationToken.None);
 			}
 
 			// Create Google Sheets API service.
@@ -108,21 +114,21 @@ namespace IvyPortfolio
 				symbols = new string[] { "VTSAX", "VFWAX", "VBTLX", "VGSLX", "VGELX", "VGPMX" };
 				fileName = "Investment Portfolio (MUTF)";
 
-				workbook = CreateSpreadsheet (client, fileName + ".xlsx", symbols).GetAwaiter ().GetResult ();
+				workbook = await CreateSpreadsheetAsync (client, fileName + ".xlsx", symbols);
 				if (map.TryGetValue (fileName, out id))
 					UpdateGoogleSpreadsheet (service, id, workbook);
 
 				symbols = new string[] { "VTI", "VEU", "BND", "VOX", "VCR", "VDC", "VDE", "VFH", "VHT", "VIS", "VAW", "VNQ", "VGT", "VPU" };
 				fileName = "Investment Portfolio (ETF)";
 
-				workbook = CreateSpreadsheet (client, fileName + ".xlsx", symbols).GetAwaiter ().GetResult ();
+				workbook = await CreateSpreadsheetAsync (client, fileName + ".xlsx", symbols);
 				if (map.TryGetValue (fileName, out id))
 					UpdateGoogleSpreadsheet (service, id, workbook);
 
 				//symbols = { "BND", "DBC", "GSG", "RWX", "VNQ", "TIP", "VWO", "VEU", "VB", "VTI" };
 				//fileName = "Investment Portfolio (TEST)";
 
-				//workbook = CreateSpreadsheet (client, fileName + ".xlsx", symbols).GetAwaiter ().GetResult ();
+				//workbook = await CreateSpreadsheetAsync (client, fileName + ".xlsx", symbols);
 				//if (docmap.TryGetValue (fileName, out id))
 				//	UpdateGoogleSpreadsheet (service, id, workbook);
 			}
@@ -197,11 +203,11 @@ namespace IvyPortfolio
 			}
 		}
 
-		static async Task<XSSFWorkbook> CreateSpreadsheet (HttpClient client, string fileName, string[] symbols)
+		static async Task<XSSFWorkbook> CreateSpreadsheetAsync (HttpClient client, string fileName, string[] symbols)
 		{
 			var workbook = new XSSFWorkbook ();
 
-			await CreateSpreadsheet (client, workbook, symbols);
+			await CreateSpreadsheetAsync (client, workbook, symbols);
 
 			using (var stream = File.Create (fileName))
 				workbook.Write (stream);
@@ -221,7 +227,7 @@ namespace IvyPortfolio
 			start = end.AddYears (-4);
 		}
 
-		static async Task CreateSpreadsheet (HttpClient client, IWorkbook workbook, string[] symbols)
+		static async Task CreateSpreadsheetAsync (HttpClient client, IWorkbook workbook, string[] symbols)
 		{
 			var descriptions = new Dictionary<string, string> ();
 			DateTime start, end;
@@ -266,9 +272,9 @@ namespace IvyPortfolio
 			};
 
 			foreach (var symbol in symbols) {
-				descriptions.Add (symbol, await GetStockDescription (client, symbol));
+				descriptions.Add (symbol, await GetStockDescriptionAsync (client, symbol));
 
-				await CreateSheet (client, workbook, font, symbol, start, end);
+				await CreateSheetAsync (client, workbook, font, symbol, start, end);
 
 				CreateDashboardTableRow (dashboard, bold, font, rowIndex200, symbol, DataColumn.SMA200Day);
 				CreateDashboardTableRow (dashboard, bold, font, rowIndex10, symbol, DataColumn.SMA10Month);
@@ -583,7 +589,7 @@ namespace IvyPortfolio
 			}
 		}
 
-		static async Task<string> GetStockDescription (HttpClient client, string symbol)
+		static async Task<string> GetStockDescriptionAsync (HttpClient client, string symbol)
 		{
 			const string format = "https://finance.yahoo.com/quote/{0}?p={0}";
 			var requestUri = string.Format (format, symbol);
@@ -619,7 +625,7 @@ namespace IvyPortfolio
 			return html.Substring (startIndex, endIndex - startIndex).Replace ("&amp;", "&");
 		}
 
-		static async Task<string> GetStockData (HttpClient client, string symbol, DateTime start, DateTime end)
+		static async Task<string> GetStockDataAsync (HttpClient client, string symbol, DateTime start, DateTime end)
 		{
 			const string format = "https://query1.finance.yahoo.com/v7/finance/download/{0}?period1={1}&period2={2}&interval=1d&events=history&crumb={3}";
 			var requestUri = string.Format (format, symbol, (start - UnixEpoch).TotalSeconds, (end - UnixEpoch).TotalSeconds, crumb);
@@ -639,9 +645,9 @@ namespace IvyPortfolio
 			return false;
 		}
 
-		static async Task<ISheet> CreateSheet (HttpClient client, IWorkbook workbook, IFont font, string symbol, DateTime start, DateTime end)
+		static async Task<ISheet> CreateSheetAsync (HttpClient client, IWorkbook workbook, IFont font, string symbol, DateTime start, DateTime end)
 		{
-			var csv = await GetStockData (client, symbol, start, end);
+			var csv = await GetStockDataAsync (client, symbol, start, end);
 			var sheet = workbook.CreateSheet (symbol);
 			var hstyle = workbook.CreateCellStyle ();
 			var style = workbook.CreateCellStyle ();
