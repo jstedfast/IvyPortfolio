@@ -35,8 +35,6 @@ namespace IvyPortfolio
 		Close,
 		AdjClose,
 		Volume,
-		SMA200Day,
-		SMA10Month,
-		SMA12Month,
+		MovingAverage
 	}
 }

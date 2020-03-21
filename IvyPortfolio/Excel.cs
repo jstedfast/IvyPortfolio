@@ -39,33 +39,39 @@ namespace IvyPortfolio
 {
 	public static class Excel
 	{
+		class MovingAverageColumn
+		{
+			public MovingAverage MovingAverage { get; private set; }
+			public int DataColumn { get; private set; }
+			public string Title { get; private set; }
+			public int RowIndex { get; set; }
+
+			public MovingAverageColumn (MovingAverage movingAverage, string title, int dataColumn, int rowIndex)
+			{
+				MovingAverage = movingAverage;
+				DataColumn = dataColumn;
+				RowIndex = rowIndex;
+				Title = title;
+			}
+		}
+
 		public static async Task<XSSFWorkbook> CreateSpreadsheetAsync (IFinancialService client, Document document, CancellationToken cancellationToken)
 		{
+			var movingAverageColumns = GetMovingAverageColumns (document, out var monthly);
 			var descriptions = new Dictionary<string, string> ();
 			var workbook = new XSSFWorkbook ();
 			var symbols = document.Symbols;
-			bool monthly = false;
 			DateTime start, end;
-
-			for (int i = 0; i < document.MovingAverages.Length && !monthly; i++) {
-				switch (document.MovingAverages[i]) {
-				case MovingAverage.Simple10Month:
-				case MovingAverage.Simple12Month:
-					monthly = true;
-					break;
-				}
-			}
 
 			GetDateRange (monthly, out start, out end);
 
+			var positionRegions = new CellRangeAddress[movingAverageColumns.Count];
+			var varianceRegions = new CellRangeAddress[movingAverageColumns.Count];
 			var dashboard = workbook.CreateSheet ("Dashboard");
 			var charts = workbook.CreateSheet ("Charts");
 			var small = workbook.CreateFont ();
 			var bold = workbook.CreateFont ();
 			var font = workbook.CreateFont ();
-			int rowIndex12 = (symbols.Length + 4) * 2;
-			int rowIndex10 = symbols.Length + 4;
-			int rowIndex200 = 0;
 
 			small.FontName = bold.FontName = font.FontName = "Arial";
 			small.FontHeightInPoints = 8;
@@ -75,40 +81,30 @@ namespace IvyPortfolio
 			bold.IsBold = true;
 
 			dashboard.DefaultColumnWidth = 18;
-			CreateDashboardTable (dashboard, small, bold, font, rowIndex200, symbols.Length, "200-Day SMA");
-			CreateDashboardTable (dashboard, small, bold, font, rowIndex10, symbols.Length, "10-Month SMA");
-			CreateDashboardTable (dashboard, small, bold, font, rowIndex12, symbols.Length, "12-Month SMA");
 
-			rowIndex200 += 2;
-			rowIndex10 += 2;
-			rowIndex12 += 2;
+			for (int i = 0; i < movingAverageColumns.Count; i++) {
+				var column = movingAverageColumns[i];
 
-			var positionRegions = new[] {
-				new CellRangeAddress (rowIndex200, rowIndex200 + symbols.Length, (int) TableColumn.Position, (int) TableColumn.Position),
-				new CellRangeAddress (rowIndex10, rowIndex10 + symbols.Length, (int) TableColumn.Position, (int) TableColumn.Position),
-				new CellRangeAddress (rowIndex12, rowIndex12 + symbols.Length, (int) TableColumn.Position, (int) TableColumn.Position)
-			};
+				CreateDashboardTable (dashboard, small, bold, font, column.RowIndex, symbols.Length, column.Title);
+				column.RowIndex += 2;
 
-			var varianceRegions = new[] {
-				new CellRangeAddress (rowIndex200, rowIndex200 + symbols.Length, (int) TableColumn.Variance, (int) TableColumn.Variance),
-				new CellRangeAddress (rowIndex10, rowIndex10 + symbols.Length, (int) TableColumn.Variance, (int) TableColumn.Variance),
-				new CellRangeAddress (rowIndex12, rowIndex12 + symbols.Length, (int) TableColumn.Variance, (int) TableColumn.Variance)
-			};
+				int lastRowIndex = column.RowIndex + symbols.Length;
+
+				positionRegions[i] = new CellRangeAddress (column.RowIndex, lastRowIndex, (int) TableColumn.Position, (int) TableColumn.Position);
+				varianceRegions[i] = new CellRangeAddress (column.RowIndex, lastRowIndex, (int) TableColumn.Variance, (int) TableColumn.Variance);
+			}
 
 			foreach (var symbol in symbols) {
 				var description = await client.GetStockDescriptionAsync (symbol, cancellationToken).ConfigureAwait (false);
 
 				descriptions.Add (symbol, description);
 
-				await CreateSheetAsync (client, workbook, font, symbol, start, end, cancellationToken).ConfigureAwait (false);
+				await CreateSheetAsync (client, workbook, font, movingAverageColumns, symbol, start, end, cancellationToken).ConfigureAwait (false);
 
-				CreateDashboardTableRow (dashboard, bold, font, rowIndex200, symbol, DataColumn.SMA200Day);
-				CreateDashboardTableRow (dashboard, bold, font, rowIndex10, symbol, DataColumn.SMA10Month);
-				CreateDashboardTableRow (dashboard, bold, font, rowIndex12, symbol, DataColumn.SMA12Month);
-
-				rowIndex200++;
-				rowIndex10++;
-				rowIndex12++;
+				foreach (var column in movingAverageColumns) {
+					CreateDashboardTableRow (dashboard, bold, font, column.RowIndex, symbol, column.DataColumn);
+					column.RowIndex++;
+				}
 			}
 
 			ApplyConditionalPositionFormatting (dashboard, positionRegions);
@@ -120,6 +116,36 @@ namespace IvyPortfolio
 				workbook.Write (stream);
 
 			return workbook;
+		}
+
+		static List<MovingAverageColumn> GetMovingAverageColumns (Document document, out bool monthly)
+		{
+			var movingAverageColumns = new List<MovingAverageColumn> ();
+			var uniqueMovingAverages = new HashSet<MovingAverage> ();
+			int dataColumn = (int) DataColumn.MovingAverage;
+			int rowIndex = 0;
+
+			monthly = false;
+
+			foreach (var movingAverage in document.MovingAverages) {
+				if (!uniqueMovingAverages.Add (movingAverage))
+					continue;
+
+				switch (movingAverage) {
+				case MovingAverage.Simple10Month:
+				case MovingAverage.Simple12Month:
+					monthly = true;
+					break;
+				}
+
+				var title = GetMovingAverageTitle (movingAverage);
+
+				movingAverageColumns.Add (new MovingAverageColumn (movingAverage, title, dataColumn, rowIndex));
+				rowIndex += document.Symbols.Length + 4;
+				dataColumn++;
+			}
+
+			return movingAverageColumns;
 		}
 
 		static void GetDateRange (bool monthly, out DateTime start, out DateTime end)
@@ -298,7 +324,7 @@ namespace IvyPortfolio
 			CreateDashboardTableFooter (dashboard, small, rowIndex + numSymbols + 2, footer);
 		}
 
-		static void CreateDashboardTableRow (ISheet dashboard, IFont bold, IFont font, int rowIndex, string symbol, DataColumn column)
+		static void CreateDashboardTableRow (ISheet dashboard, IFont bold, IFont font, int rowIndex, string symbol, int column)
 		{
 			var boldStyle = dashboard.Workbook.CreateCellStyle ();
 			var style = dashboard.Workbook.CreateCellStyle ();
@@ -452,7 +478,7 @@ namespace IvyPortfolio
 			return false;
 		}
 
-		static async Task<ISheet> CreateSheetAsync (IFinancialService client, IWorkbook workbook, IFont font, string symbol, DateTime start, DateTime end, CancellationToken cancellationToken)
+		static async Task<ISheet> CreateSheetAsync (IFinancialService client, IWorkbook workbook, IFont font, List<MovingAverageColumn>movingAverageColumns, string symbol, DateTime start, DateTime end, CancellationToken cancellationToken)
 		{
 			var csv = await client.GetStockDataAsync (symbol, start, end, cancellationToken).ConfigureAwait (false);
 			var sheet = workbook.CreateSheet (symbol);
@@ -496,21 +522,13 @@ namespace IvyPortfolio
 					columnIndex++;
 				}
 
-				// Add the Titles for the formula columns
-				//sheet.SetDefaultColumnStyle ((int) DataColumn.SMA200Day, style);
-				cell = row.CreateCell ((int) DataColumn.SMA200Day, CellType.String);
-				cell.SetCellValue ("200-Day SMA");
-				cell.CellStyle = hstyle;
-
-				//sheet.SetDefaultColumnStyle ((int) DataColumn.SMA10Month, style);
-				cell = row.CreateCell ((int) DataColumn.SMA10Month, CellType.String);
-				cell.SetCellValue ("10 Month SMA");
-				cell.CellStyle = hstyle;
-
-				//sheet.SetDefaultColumnStyle ((int) DataColumn.SMA12Month, style);
-				cell = row.CreateCell ((int) DataColumn.SMA12Month, CellType.String);
-				cell.SetCellValue ("12 Month SMA");
-				cell.CellStyle = hstyle;
+				// Add the Titles for the Moving Average columns
+				foreach (var movingAverageColumn in movingAverageColumns) {
+					//sheet.SetDefaultColumnStyle ((int) DataColumn.SMA200Day, style);
+					cell = row.CreateCell (movingAverageColumn.DataColumn, CellType.String);
+					cell.SetCellValue (movingAverageColumn.Title);
+					cell.CellStyle = hstyle;
+				}
 
 				// The data is sorted such that the latest data is at the end
 				while ((line = reader.ReadLine ()) != null)
@@ -546,36 +564,49 @@ namespace IvyPortfolio
 					}
 				}
 
-				// Set the formula for the 200-Day SMA cells
-				for (int i = 1; i < rowIndex - 200; i++) {
-					row = sheet.GetRow (i);
-
-					cell = row.CreateCell ((int) DataColumn.SMA200Day, CellType.Formula);
-					cell.SetCellFormula (string.Format ("AVERAGE({0}{1}:{0}{2})", (char) ('A' + DataColumn.AdjClose), i + 1, i + 201));
-					cell.CellStyle = style;
-				}
-
-				// Set the formulas for the 10-Month and 12-Month SMA cells
-				for (int i = 0; i < endOfMonthRows.Count - 12; i++) {
-					var items = new List<string> ();
-
-					row = sheet.GetRow (endOfMonthRows[i]);
-
-					cell = row.CreateCell ((int) DataColumn.SMA10Month, CellType.Formula);
-					for (int k = 0; k < 10; k++)
-						items.Add (string.Format ("{0}{1}", (char) ('A' + DataColumn.AdjClose), endOfMonthRows[i + k] + 1));
-					cell.SetCellFormula (string.Format ("AVERAGE({0})", string.Join (", ", items)));
-					cell.CellStyle = style;
-
-					cell = row.CreateCell ((int) DataColumn.SMA12Month, CellType.Formula);
-					for (int k = 0; k < 2; k++)
-						items.Add (string.Format ("{0}{1}", (char) ('A' + DataColumn.AdjClose), endOfMonthRows[i + 10 + k] + 1));
-					cell.SetCellFormula (string.Format ("AVERAGE({0})", string.Join (", ", items)));
-					cell.CellStyle = style;
+				// Populate the formulas for the Moving Average columns
+				foreach (var movingAverageColumn in movingAverageColumns) {
+					switch (movingAverageColumn.MovingAverage) {
+					case MovingAverage.Simple200Day:
+						SetSimpleDayMovingAverageFormulas (sheet, style, movingAverageColumn.DataColumn, rowIndex, 200);
+						break;
+					case MovingAverage.Simple10Month:
+						SetSimpleMonthMovingAverageFormuas (sheet, style, movingAverageColumn.DataColumn, rowIndex, endOfMonthRows, 10);
+						break;
+					case MovingAverage.Simple12Month:
+						SetSimpleMonthMovingAverageFormuas (sheet, style, movingAverageColumn.DataColumn, rowIndex, endOfMonthRows, 12);
+						break;
+					}
 				}
 			}
 
 			return sheet;
+		}
+
+		static void SetSimpleDayMovingAverageFormulas (ISheet sheet, ICellStyle style, int dataColumn, int maxRowIndex, int days)
+		{
+			for (int i = 1; i < maxRowIndex - days; i++) {
+				var row = sheet.GetRow (i);
+
+				var cell = row.CreateCell (dataColumn, CellType.Formula);
+				cell.SetCellFormula (string.Format ("AVERAGE({0}{1}:{0}{2})", (char) ('A' + DataColumn.AdjClose), i + 1, i + days + 1));
+				cell.CellStyle = style;
+			}
+		}
+
+		static void SetSimpleMonthMovingAverageFormuas (ISheet sheet, ICellStyle style, int dataColumn, int maxRowIndex, List<int> endOfMonthRows, int months)
+		{
+			for (int i = 0; i < endOfMonthRows.Count - months; i++) {
+				var items = new List<string> ();
+
+				var row = sheet.GetRow (endOfMonthRows[i]);
+
+				var cell = row.CreateCell (dataColumn, CellType.Formula);
+				for (int month = 0; month < months; month++)
+					items.Add (string.Format ("{0}{1}", (char) ('A' + DataColumn.AdjClose), endOfMonthRows[i + month] + 1));
+				cell.SetCellFormula (string.Format ("AVERAGE({0})", string.Join (", ", items)));
+				cell.CellStyle = style;
+			}
 		}
 	}
 }
