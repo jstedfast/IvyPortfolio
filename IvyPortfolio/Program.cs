@@ -74,16 +74,20 @@ namespace IvyPortfolio
 
 					Array.Sort (document.MovingAverages);
 
-					var workbook = await Excel.CreateSpreadsheetAsync (client, document, cancellationToken).ConfigureAwait (false);
+					try {
+						var workbook = await Excel.CreateSpreadsheetAsync (client, document, cancellationToken).ConfigureAwait (false);
 
-					if (document.RemoteDocuments == null)
-						continue;
-
-					foreach (var remote in document.RemoteDocuments) {
-						if (string.IsNullOrEmpty (remote.Account) || !accounts.TryGetValue (remote.Account, out var account))
+						if (document.RemoteDocuments == null)
 							continue;
 
-						await account.UpdateRemoteDocumentAsync (workbook, remote.Identifier, cancellationToken).ConfigureAwait (false);
+						foreach (var remote in document.RemoteDocuments) {
+							if (string.IsNullOrEmpty (remote.Account) || !accounts.TryGetValue (remote.Account, out var account))
+								continue;
+
+							await account.UpdateRemoteDocumentAsync (workbook, remote.Identifier, cancellationToken).ConfigureAwait (false);
+						}
+					} catch {
+						continue;
 					}
 				}
 			}

@@ -55,7 +55,7 @@ namespace IvyPortfolio
 			}
 		}
 
-		public static async Task<XSSFWorkbook> CreateSpreadsheetAsync (IFinancialService client, Document document, CancellationToken cancellationToken)
+		public static async Task<IWorkbook> CreateSpreadsheetAsync (IFinancialService client, Document document, CancellationToken cancellationToken)
 		{
 			var movingAverageColumns = GetMovingAverageColumns (document, out var monthly);
 			var descriptions = new Dictionary<string, string> ();
@@ -64,6 +64,8 @@ namespace IvyPortfolio
 			DateTime start, end;
 
 			GetDateRange (monthly, out start, out end);
+
+			Console.WriteLine ("Generating '{0}' based on data from {1} to {2}", document.FileName, start, end);
 
 			var positionRegions = new CellRangeAddress[movingAverageColumns.Count];
 			var varianceRegions = new CellRangeAddress[movingAverageColumns.Count];
@@ -99,7 +101,12 @@ namespace IvyPortfolio
 
 				descriptions.Add (symbol, description);
 
-				await CreateSheetAsync (client, workbook, font, movingAverageColumns, symbol, start, end, cancellationToken).ConfigureAwait (false);
+				try {
+					await CreateSheetAsync (client, workbook, font, movingAverageColumns, symbol, start, end, cancellationToken).ConfigureAwait (false);
+				} catch (Exception ex) {
+					Console.WriteLine ("\tFailed to get stock data for {0}: {1}", symbol, ex.Message);
+					throw;
+				}
 
 				foreach (var column in movingAverageColumns) {
 					CreateDashboardTableRow (dashboard, bold, font, column.RowIndex, symbol, column.DataColumn);

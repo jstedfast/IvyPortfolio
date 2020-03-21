@@ -113,6 +113,8 @@ namespace IvyPortfolio
 			if (string.IsNullOrEmpty (identifier))
 				return;
 
+			System.Console.WriteLine ("\tUpdating Google Spreadsheet: {0}", identifier);
+
 			// Sheet1 = Dashboard, Sheet2 = Charts
 			for (int index = 2; index < workbook.NumberOfSheets; index++) {
 				var sheet = workbook.GetSheetAt (index);
