@@ -46,12 +46,15 @@ namespace IvyPortfolio
 			public string Title { get; private set; }
 			public int RowIndex { get; set; }
 
-			public MovingAverageColumn (MovingAverage movingAverage, string title, int dataColumn, int rowIndex)
+			public MovingAverageColumn (MovingAverage movingAverage, int dataColumn, int rowIndex)
 			{
 				MovingAverage = movingAverage;
+				Title = movingAverage.Title;
 				DataColumn = dataColumn;
 				RowIndex = rowIndex;
-				Title = title;
+
+				if (string.IsNullOrEmpty (Title))
+					Title = string.Format (CultureInfo.InvariantCulture, "{0}-{1} SMA", movingAverage.Period, movingAverage.PeriodType);
 			}
 		}
 
@@ -128,26 +131,16 @@ namespace IvyPortfolio
 		static List<MovingAverageColumn> GetMovingAverageColumns (Document document, out bool monthly)
 		{
 			var movingAverageColumns = new List<MovingAverageColumn> ();
-			var uniqueMovingAverages = new HashSet<MovingAverage> ();
 			int dataColumn = (int) DataColumn.MovingAverage;
 			int rowIndex = 0;
 
 			monthly = false;
 
 			foreach (var movingAverage in document.MovingAverages) {
-				if (!uniqueMovingAverages.Add (movingAverage))
-					continue;
-
-				switch (movingAverage) {
-				case MovingAverage.Simple10Month:
-				case MovingAverage.Simple12Month:
+				if (movingAverage.PeriodType == MovingAveragePeriodType.Month)
 					monthly = true;
-					break;
-				}
 
-				var title = GetMovingAverageTitle (movingAverage);
-
-				movingAverageColumns.Add (new MovingAverageColumn (movingAverage, title, dataColumn, rowIndex));
+				movingAverageColumns.Add (new MovingAverageColumn (movingAverage, dataColumn, rowIndex));
 				rowIndex += document.Symbols.Length + 4;
 				dataColumn++;
 			}
@@ -165,16 +158,6 @@ namespace IvyPortfolio
 				end = today;
 
 			start = end.AddYears (-4);
-		}
-
-		static string GetMovingAverageTitle (MovingAverage movingAverage)
-		{
-			switch (movingAverage) {
-			case MovingAverage.Simple200Day: return "200-Day SMA";
-			case MovingAverage.Simple10Month: return "10-Month SMA";
-			case MovingAverage.Simple12Month: return "12-Month SMA";
-			default: return string.Empty;
-			}
 		}
 
 		static void ApplyConditionalPositionFormatting (ISheet dashboard, CellRangeAddress[] regions)
@@ -573,15 +556,14 @@ namespace IvyPortfolio
 
 				// Populate the formulas for the Moving Average columns
 				foreach (var movingAverageColumn in movingAverageColumns) {
-					switch (movingAverageColumn.MovingAverage) {
-					case MovingAverage.Simple200Day:
-						SetSimpleDayMovingAverageFormulas (sheet, style, movingAverageColumn.DataColumn, rowIndex, 200);
+					var movingAverage = movingAverageColumn.MovingAverage;
+
+					switch (movingAverage.PeriodType) {
+					case MovingAveragePeriodType.Day:
+						SetSimpleDayMovingAverageFormulas (sheet, style, movingAverageColumn.DataColumn, rowIndex, movingAverage.Period);
 						break;
-					case MovingAverage.Simple10Month:
-						SetSimpleMonthMovingAverageFormuas (sheet, style, movingAverageColumn.DataColumn, rowIndex, endOfMonthRows, 10);
-						break;
-					case MovingAverage.Simple12Month:
-						SetSimpleMonthMovingAverageFormuas (sheet, style, movingAverageColumn.DataColumn, rowIndex, endOfMonthRows, 12);
+					case MovingAveragePeriodType.Month:
+						SetSimpleMonthMovingAverageFormuas (sheet, style, movingAverageColumn.DataColumn, endOfMonthRows, movingAverage.Period);
 						break;
 					}
 				}
@@ -601,7 +583,7 @@ namespace IvyPortfolio
 			}
 		}
 
-		static void SetSimpleMonthMovingAverageFormuas (ISheet sheet, ICellStyle style, int dataColumn, int maxRowIndex, List<int> endOfMonthRows, int months)
+		static void SetSimpleMonthMovingAverageFormuas (ISheet sheet, ICellStyle style, int dataColumn, List<int> endOfMonthRows, int months)
 		{
 			for (int i = 0; i < endOfMonthRows.Count - months; i++) {
 				var items = new List<string> ();

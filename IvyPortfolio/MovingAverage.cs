@@ -25,39 +25,83 @@
 //
 
 using System;
+using System.Collections.Generic;
+
 using Newtonsoft.Json;
 
 namespace IvyPortfolio
 {
-	public enum MovingAverage
+	public enum MovingAverageAlgorithm
 	{
-		Simple200Day  = 1,
-		Simple10Month = 2,
-		Simple12Month = 3
+		Simple = 1
 	}
 
-	public class MovingAverageConverter : JsonConverter<MovingAverage>
+	public enum MovingAveragePeriodType
 	{
-		public override MovingAverage ReadJson (JsonReader reader, Type objectType, MovingAverage existingValue, bool hasExistingValue, JsonSerializer serializer)
+		Day = 1,
+		//Week = 7,
+		Month = 28,
+		//Year = 365
+	}
+
+	public class MovingAverage
+	{
+		[JsonProperty ("algorithm")]
+		public MovingAverageAlgorithm Algorithm { get; set; }
+
+		[JsonProperty ("period-type")]
+		public MovingAveragePeriodType PeriodType { get; set; }
+
+		[JsonProperty ("period")]
+		public int Period { get; set; }
+
+		[JsonProperty ("title")]
+		public string Title { get; set; }
+	}
+
+	public class MovingAverageConverter : JsonConverter
+	{
+		readonly Dictionary<string, MovingAverageAlgorithm> algorithms;
+		readonly Dictionary<string, MovingAveragePeriodType> periodTypes;
+
+		public MovingAverageConverter ()
 		{
-			MovingAverage movingAverage;
+			algorithms = new Dictionary<string, MovingAverageAlgorithm> (StringComparer.OrdinalIgnoreCase);
+			foreach (MovingAverageAlgorithm algorithm in Enum.GetValues (typeof (MovingAverageAlgorithm)))
+				algorithms.Add (algorithm.ToString (), algorithm);
 
-			if (reader.Value == null)
-				return 0;
-
-			var value = reader.Value.ToString ();
-			if (Enum.TryParse (value, out movingAverage))
-				return movingAverage;
-
-			switch (value.ToLowerInvariant ()) {
-			case "200-day": return MovingAverage.Simple200Day;
-			case "10-month": return MovingAverage.Simple10Month;
-			case "12-month": return MovingAverage.Simple12Month;
-			default: return 0;
-			}
+			periodTypes = new Dictionary<string, MovingAveragePeriodType> (StringComparer.OrdinalIgnoreCase);
+			foreach (MovingAveragePeriodType type in Enum.GetValues (typeof (MovingAveragePeriodType)))
+				periodTypes.Add (type.ToString (), type);
 		}
 
-		public override void WriteJson (JsonWriter writer, MovingAverage value, JsonSerializer serializer)
+		public override bool CanConvert (Type objectType)
+		{
+			return objectType == typeof (MovingAverageAlgorithm) || objectType == typeof (MovingAveragePeriodType);
+		}
+
+		public override object ReadJson (JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+		{
+			var value = reader.Value?.ToString ();
+
+			if (objectType == typeof (MovingAverageAlgorithm)) {
+				if (value == null || !algorithms.TryGetValue (value, out var algorithm))
+					return MovingAverageAlgorithm.Simple;
+
+				return algorithm;
+			}
+
+			if (objectType == typeof (MovingAveragePeriodType)) {
+				if (value == null || !periodTypes.TryGetValue (value, out var periodType))
+					return MovingAveragePeriodType.Day;
+
+				return periodType;
+			}
+
+			throw new NotImplementedException ();
+		}
+
+		public override void WriteJson (JsonWriter writer, object value, JsonSerializer serializer)
 		{
 			throw new NotImplementedException ();
 		}

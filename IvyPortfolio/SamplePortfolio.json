@@ -28,9 +28,24 @@
 				"VTI"
 			],
 			"moving-averages": [
-				"200-Day",
-				"10-Month",
-				"12-Month"
+				{
+					"title": "200-Day SMA",
+					"algorithm": "simple",
+					"period-type": "day",
+					"period": 200
+				},
+				{
+					"title": "10-Month SMA",
+					"algorithm": "simple",
+					"period-type": "month",
+					"period": 10
+				},
+				{
+					"title": "12-Month SMA",
+					"algorithm": "simple",
+					"period-type": "month",
+					"period": 12
+				}
 			]
 		}
 	]

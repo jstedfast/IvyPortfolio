@@ -72,8 +72,6 @@ namespace IvyPortfolio
 					if (string.IsNullOrEmpty (document.FileName) || document.Symbols == null || document.Symbols.Length == 0)
 						continue;
 
-					Array.Sort (document.MovingAverages);
-
 					try {
 						var workbook = await Excel.CreateSpreadsheetAsync (client, document, cancellationToken).ConfigureAwait (false);
 
