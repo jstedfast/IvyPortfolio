@@ -24,6 +24,7 @@
 // THE SOFTWARE.
 //
 
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -113,19 +114,22 @@ namespace IvyPortfolio
 			if (string.IsNullOrEmpty (identifier))
 				return;
 
-			System.Console.WriteLine ("\tUpdating Google Spreadsheet: {0}", identifier);
+			Console.WriteLine ("\tUpdating Google Spreadsheet: {0}", identifier);
 
 			// Sheet1 = Dashboard, Sheet2 = Charts
+			short maxColumnIndex = 0;
 			for (int index = 2; index < workbook.NumberOfSheets; index++) {
 				var sheet = workbook.GetSheetAt (index);
-				var values = new List<IList<object>> ();
+				var values = new List<IList<object>> (sheet.LastRowNum);
 
-				for (int i = 0; i < sheet.LastRowNum; i++) {
-					var row = sheet.GetRow (i);
+				for (int rowIndex = 0; rowIndex < sheet.LastRowNum; rowIndex++) {
+					var row = sheet.GetRow (rowIndex);
 
-					values.Add (new object[10]);
-					for (int j = 0; j < row.LastCellNum; j++) {
-						var cell = row.GetCell (j, MissingCellPolicy.RETURN_BLANK_AS_NULL);
+					maxColumnIndex = Math.Max (maxColumnIndex, row.LastCellNum);
+					values.Add (new object[row.LastCellNum]);
+
+					for (int columnIndex = 0; columnIndex < row.LastCellNum; columnIndex++) {
+						var cell = row.GetCell (columnIndex, MissingCellPolicy.RETURN_BLANK_AS_NULL);
 						string value;
 
 						if (cell != null) {
@@ -139,14 +143,14 @@ namespace IvyPortfolio
 							value = string.Empty;
 						}
 
-						values[i][j] = value;
+						values[rowIndex][columnIndex] = value;
 					}
 
-					for (int j = row.LastCellNum; j < 10; j++)
-						values[i][j] = string.Empty;
+					for (int columnIndex = row.LastCellNum; columnIndex < 10; columnIndex++)
+						values[rowIndex][columnIndex] = string.Empty;
 				}
 
-				var range = string.Format ("{0}!A1:J", sheet.SheetName);
+				var range = string.Format ("{0}!A1:{1}", sheet.SheetName, 'A' + maxColumnIndex);
 				var body = new ValueRange { Values = values };
 
 				var request = GoogleSheetsService.Spreadsheets.Values.Update (body, identifier, range);
