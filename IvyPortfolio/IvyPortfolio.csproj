@@ -76,6 +76,7 @@
     <Compile Include="Document.cs" />
     <Compile Include="Excel.cs" />
     <Compile Include="IFinancialService.cs" />
+    <Compile Include="IStockData.cs" />
     <Compile Include="LegendColumn.cs" />
     <Compile Include="MovingAverage.cs" />
     <Compile Include="Portfolio.cs" />
@@ -84,6 +85,7 @@
     <Compile Include="Style.cs" />
     <Compile Include="TableColumn.cs" />
     <Compile Include="YahooFinance.cs" />
+    <Compile Include="YahooStockData.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

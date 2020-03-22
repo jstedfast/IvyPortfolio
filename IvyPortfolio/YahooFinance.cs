@@ -87,14 +87,13 @@ namespace IvyPortfolio
 			return html.Substring (startIndex, endIndex - startIndex).Replace ("&amp;", "&");
 		}
 
-		public async Task<string> GetStockDataAsync (string symbol, DateTime start, DateTime end, CancellationToken cancellationToken)
+		public async Task<IStockData> GetStockDataAsync (string symbol, DateTime start, DateTime end, CancellationToken cancellationToken)
 		{
 			const string format = "https://query1.finance.yahoo.com/v7/finance/download/{0}?period1={1}&period2={2}&interval=1d&events=history&crumb={3}";
 			var requestUri = string.Format (format, symbol, (start - UnixEpoch).TotalSeconds, (end - UnixEpoch).TotalSeconds, crumb);
 
-			var data = await client.GetStringAsync (requestUri).ConfigureAwait (false);
-
-			return data;
+			using (var stream = await client.GetStreamAsync (requestUri).ConfigureAwait (false))
+				return await YahooStockData.LoadAsync (stream, cancellationToken).ConfigureAwait (false);
 		}
 
 		public void Dispose ()

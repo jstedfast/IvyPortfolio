@@ -1,5 +1,5 @@
 ﻿//
-// IFinancialService.cs
+// IStockData.cs
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
@@ -24,16 +24,14 @@
 // THE SOFTWARE.
 //
 
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace IvyPortfolio
 {
-	public interface IFinancialService : IDisposable
+	public interface IStockData
 	{
-		Task<string> GetStockDescriptionAsync (string symbol, CancellationToken cancellationToken);
+		int Columns { get; }
+		int Rows { get; }
 
-		Task<IStockData> GetStockDataAsync (string symbol, DateTime start, DateTime end, CancellationToken cancellationToken);
+		string GetHeader (int column);
+		object GetValue (int row, int column);
 	}
 }

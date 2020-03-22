@@ -107,7 +107,7 @@ namespace IvyPortfolio
 				try {
 					await CreateSheetAsync (client, workbook, font, movingAverageColumns, symbol, start, end, cancellationToken).ConfigureAwait (false);
 				} catch (Exception ex) {
-					Console.WriteLine ("\tFailed to get stock data for {0}: {1}", symbol, ex.Message);
+					Console.WriteLine ("\tFailed to get stock data for {0}: {1}\n{2}", symbol, ex.Message, ex);
 					throw;
 				}
 
@@ -458,10 +458,10 @@ namespace IvyPortfolio
 			}
 		}
 
-		static bool IsNull (string[] data)
+		static bool IsNull (IStockData stockData, int row)
 		{
-			for (int i = 1; i < data.Length; i++) {
-				if (data[i] == "null")
+			for (int i = 1; i < stockData.Columns; i++) {
+				if (stockData.GetValue (row, i) == null)
 					return true;
 			}
 
@@ -470,7 +470,7 @@ namespace IvyPortfolio
 
 		static async Task<ISheet> CreateSheetAsync (IFinancialService client, IWorkbook workbook, IFont font, List<MovingAverageColumn>movingAverageColumns, string symbol, DateTime start, DateTime end, CancellationToken cancellationToken)
 		{
-			var csv = await client.GetStockDataAsync (symbol, start, end, cancellationToken).ConfigureAwait (false);
+			var stockData = await client.GetStockDataAsync (symbol, start, end, cancellationToken).ConfigureAwait (false);
 			var sheet = workbook.CreateSheet (symbol);
 			var hstyle = workbook.CreateCellStyle ();
 			var style = workbook.CreateCellStyle ();
@@ -487,85 +487,80 @@ namespace IvyPortfolio
 
 			sheet.DefaultColumnWidth = 12;
 
-			using (var reader = new StringReader (csv)) {
-				var columnNames = reader.ReadLine ().Split (',');
-				var endOfMonthRows = new List<int> ();
-				var lines = new List<string> ();
-				int previousMonth = -1;
-				var columnIndex = 0;
-				var rowIndex = 1;
-				string line;
-				ICell cell;
-				IRow row;
+			var endOfMonthRows = new List<int> ();
+			int previousMonth = -1;
+			var columnIndex = 0;
+			var rowIndex = 1;
+			ICell cell;
+			IRow row;
 
-				for (int i = sheet.LastRowNum; i > 0; i--) {
-					row = sheet.GetRow (i - 1);
-					sheet.RemoveRow (row);
+			for (int i = sheet.LastRowNum; i > 0; i--) {
+				row = sheet.GetRow (i - 1);
+				sheet.RemoveRow (row);
+			}
+
+			// Add the Titles for the data columns
+			row = sheet.CreateRow (0);
+			while (columnIndex < stockData.Columns) {
+				cell = row.CreateCell (columnIndex, CellType.String);
+				cell.SetCellValue (stockData.GetHeader (columnIndex));
+				cell.CellStyle = hstyle;
+				columnIndex++;
+			}
+
+			// Add the Titles for the Moving Average columns
+			foreach (var movingAverageColumn in movingAverageColumns) {
+				//sheet.SetDefaultColumnStyle (movingAverageColumn.DataColumn, style);
+				cell = row.CreateCell (movingAverageColumn.DataColumn, CellType.String);
+				cell.SetCellValue (movingAverageColumn.Title);
+				cell.CellStyle = hstyle;
+			}
+
+			// Read the data in reverse
+			for (int i = stockData.Rows - 1; i >= 0; i--) {
+				object value;
+
+				if (IsNull (stockData, i))
+					continue;
+
+				value = stockData.GetValue (i, 0);
+				if (!(value is DateTime date))
+					continue;
+
+				row = sheet.CreateRow (rowIndex++);
+				columnIndex = 0;
+
+				// Note: the first column is a DateTime value, all other values are stock price values
+				cell = row.CreateCell (columnIndex++, CellType.String);
+				cell.SetCellValue (date.ToString ("yyyy-MM-dd", CultureInfo.InvariantCulture));
+				cell.CellStyle = style;
+
+				if (date.Month != previousMonth) {
+					endOfMonthRows.Add (rowIndex - 1);
+					previousMonth = date.Month;
 				}
 
-				// Add the Titles for the data columns
-				row = sheet.CreateRow (0);
-				while (columnIndex < columnNames.Length) {
-					cell = row.CreateCell (columnIndex, CellType.String);
-					cell.SetCellValue (columnNames[columnIndex]);
-					cell.CellStyle = hstyle;
+				while (columnIndex < stockData.Columns) {
+					cell = row.CreateCell (columnIndex, CellType.Numeric);
+					value = stockData.GetValue (i, columnIndex);
+					if (value is double number)
+						cell.SetCellValue (number);
+					cell.CellStyle = style;
 					columnIndex++;
 				}
+			}
 
-				// Add the Titles for the Moving Average columns
-				foreach (var movingAverageColumn in movingAverageColumns) {
-					//sheet.SetDefaultColumnStyle ((int) DataColumn.SMA200Day, style);
-					cell = row.CreateCell (movingAverageColumn.DataColumn, CellType.String);
-					cell.SetCellValue (movingAverageColumn.Title);
-					cell.CellStyle = hstyle;
-				}
+			// Populate the formulas for the Moving Average columns
+			foreach (var movingAverageColumn in movingAverageColumns) {
+				var movingAverage = movingAverageColumn.MovingAverage;
 
-				// The data is sorted such that the latest data is at the end
-				while ((line = reader.ReadLine ()) != null)
-					lines.Add (line);
-
-				// Read the data in reverse
-				for (int i = lines.Count - 1; i >= 0; i--) {
-					var data = lines[i].Split (',');
-					DateTime date;
-
-					if (IsNull (data))
-						continue;
-
-					row = sheet.CreateRow (rowIndex++);
-					columnIndex = 0;
-
-					// Note: the first column is a DateTime value, all other values are stock price values
-					date = DateTime.Parse (data[0], CultureInfo.InvariantCulture);
-					cell = row.CreateCell (columnIndex++, CellType.String);
-					cell.SetCellValue (data[0]);
-					cell.CellStyle = style;
-
-					if (date.Month != previousMonth) {
-						endOfMonthRows.Add (rowIndex - 1);
-						previousMonth = date.Month;
-					}
-
-					while (columnIndex < data.Length) {
-						cell = row.CreateCell (columnIndex, CellType.Numeric);
-						cell.SetCellValue (double.Parse (data[columnIndex], CultureInfo.InvariantCulture));
-						cell.CellStyle = style;
-						columnIndex++;
-					}
-				}
-
-				// Populate the formulas for the Moving Average columns
-				foreach (var movingAverageColumn in movingAverageColumns) {
-					var movingAverage = movingAverageColumn.MovingAverage;
-
-					switch (movingAverage.PeriodType) {
-					case MovingAveragePeriodType.Day:
-						SetSimpleDayMovingAverageFormulas (sheet, style, movingAverageColumn.DataColumn, rowIndex, movingAverage.Period);
-						break;
-					case MovingAveragePeriodType.Month:
-						SetSimpleMonthMovingAverageFormuas (sheet, style, movingAverageColumn.DataColumn, endOfMonthRows, movingAverage.Period);
-						break;
-					}
+				switch (movingAverage.PeriodType) {
+				case MovingAveragePeriodType.Day:
+					SetSimpleDayMovingAverageFormulas (sheet, style, movingAverageColumn.DataColumn, rowIndex, movingAverage.Period);
+					break;
+				case MovingAveragePeriodType.Month:
+					SetSimpleMonthMovingAverageFormuas (sheet, style, movingAverageColumn.DataColumn, endOfMonthRows, movingAverage.Period);
+					break;
 				}
 			}
 
