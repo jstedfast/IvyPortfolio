@@ -145,18 +145,16 @@ namespace IvyPortfolio
 
 						values[rowIndex][columnIndex] = value;
 					}
-
-					for (int columnIndex = row.LastCellNum; columnIndex < 10; columnIndex++)
-						values[rowIndex][columnIndex] = string.Empty;
 				}
 
+				// Update the values in the Google Sheet
 				var range = string.Format ("{0}!A1:{1}", sheet.SheetName, 'A' + maxColumnIndex);
-				var body = new ValueRange { Values = values };
+				var valueRange = new ValueRange { Values = values };
 
-				var request = GoogleSheetsService.Spreadsheets.Values.Update (body, identifier, range);
-				request.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+				var updateValuesRequest = GoogleSheetsService.Spreadsheets.Values.Update (valueRange, identifier, range);
+				updateValuesRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
 
-				var response = await request.ExecuteAsync (cancellationToken).ConfigureAwait (false);
+				var response = await updateValuesRequest.ExecuteAsync (cancellationToken).ConfigureAwait (false);
 			}
 		}
 	}
