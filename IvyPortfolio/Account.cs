@@ -117,10 +117,10 @@ namespace IvyPortfolio
 			Console.WriteLine ("\tUpdating Google Spreadsheet: {0}", identifier);
 
 			// Sheet1 = Dashboard, Sheet2 = Charts
-			short maxColumnIndex = 0;
 			for (int index = 2; index < workbook.NumberOfSheets; index++) {
 				var sheet = workbook.GetSheetAt (index);
 				var values = new List<IList<object>> (sheet.LastRowNum);
+				short maxColumnIndex = 0;
 
 				for (int rowIndex = 0; rowIndex < sheet.LastRowNum; rowIndex++) {
 					var row = sheet.GetRow (rowIndex);
@@ -130,12 +130,12 @@ namespace IvyPortfolio
 
 					for (int columnIndex = 0; columnIndex < row.LastCellNum; columnIndex++) {
 						var cell = row.GetCell (columnIndex, MissingCellPolicy.RETURN_BLANK_AS_NULL);
-						string value;
+						object value;
 
 						if (cell != null) {
 							switch (cell.CellType) {
 							case CellType.String: value = cell.StringCellValue; break;
-							case CellType.Numeric: value = cell.NumericCellValue.ToString (); break;
+							case CellType.Numeric: value = cell.NumericCellValue; break;
 							case CellType.Formula: value = "=" + cell.CellFormula; break;
 							default: value = string.Empty; break;
 							}
@@ -148,13 +148,17 @@ namespace IvyPortfolio
 				}
 
 				// Update the values in the Google Sheet
-				var range = string.Format ("{0}!A1:{1}", sheet.SheetName, 'A' + maxColumnIndex);
+				var range = string.Format ("{0}!A1:{1}{2}", sheet.SheetName, (char) ('A' + maxColumnIndex), sheet.LastRowNum);
 				var valueRange = new ValueRange { Values = values };
 
 				var updateValuesRequest = GoogleSheetsService.Spreadsheets.Values.Update (valueRange, identifier, range);
 				updateValuesRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
 
-				var response = await updateValuesRequest.ExecuteAsync (cancellationToken).ConfigureAwait (false);
+				try {
+					var response = await updateValuesRequest.ExecuteAsync (cancellationToken).ConfigureAwait (false);
+				} catch (Exception ex) {
+					Console.WriteLine ("\tFailed: {0}", ex);
+				}
 			}
 		}
 	}
