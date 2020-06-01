@@ -60,7 +60,6 @@ namespace IvyPortfolio
 
 			// extract the cookie crumb
 			var crumbs = CrumbRegex.Matches (html);
-			string crumb;
 
 			if (crumbs.Count > 0) {
 				crumb = crumbs[0].Groups["crumb"].Value;
