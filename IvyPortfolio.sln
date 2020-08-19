@@ -1,17 +1,24 @@
-
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30413.136
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IvyPortfolio", "IvyPortfolio\IvyPortfolio.csproj", "{4D0470AE-87BF-4B07-A528-30B16D2286AB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|anycpu = Debug|anycpu
-		Release|anycpu = Release|anycpu
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{4D0470AE-87BF-4B07-A528-30B16D2286AB}.Debug|anycpu.ActiveCfg = Debug|anycpu
-		{4D0470AE-87BF-4B07-A528-30B16D2286AB}.Debug|anycpu.Build.0 = Debug|anycpu
-		{4D0470AE-87BF-4B07-A528-30B16D2286AB}.Release|anycpu.ActiveCfg = Release|anycpu
-		{4D0470AE-87BF-4B07-A528-30B16D2286AB}.Release|anycpu.Build.0 = Release|anycpu
+		{4D0470AE-87BF-4B07-A528-30B16D2286AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D0470AE-87BF-4B07-A528-30B16D2286AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D0470AE-87BF-4B07-A528-30B16D2286AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D0470AE-87BF-4B07-A528-30B16D2286AB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FEB3E389-4661-48BB-8FD0-31FE12DAFA6F}
 	EndGlobalSection
 EndGlobal
