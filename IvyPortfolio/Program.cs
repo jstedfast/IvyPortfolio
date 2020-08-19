@@ -44,8 +44,8 @@ namespace IvyPortfolio
 				dataDir = Path.GetDirectoryName (args[0]);
 				fileName = args[0];
 			} else {
-				var home = Environment.GetFolderPath (Environment.SpecialFolder.Personal);
-				dataDir = Path.Combine (home, "Dropbox", "IvyPortfolio");
+				var home = Environment.GetFolderPath (Environment.SpecialFolder.UserProfile);
+				dataDir = Path.Combine (home, "OneDrive", "IvyPortfolio");
 				fileName = Path.Combine (dataDir, "portfolio.json");
 			}
 
