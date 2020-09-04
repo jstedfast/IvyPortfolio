@@ -155,7 +155,7 @@ namespace IvyPortfolio
 			if (monthly && today.Day < DateTime.DaysInMonth (today.Year, today.Month))
 				end = today.AddDays (-1 * today.Day);
 			else
-				end = today;
+				end = today.AddDays (-1);
 
 			start = end.AddYears (-4);
 		}
