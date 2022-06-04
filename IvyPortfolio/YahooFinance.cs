@@ -31,6 +31,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 namespace IvyPortfolio
 {
 	public class YahooFinance : IFinancialService
@@ -90,9 +93,32 @@ namespace IvyPortfolio
 		{
 			const string format = "https://query1.finance.yahoo.com/v7/finance/download/{0}?period1={1}&period2={2}&interval=1d&events=history&crumb={3}";
 			var requestUri = string.Format (format, symbol, (start - UnixEpoch).TotalSeconds, (end - UnixEpoch).TotalSeconds, crumb);
+			int retries = 0;
 
-			using (var stream = await client.GetStreamAsync (requestUri).ConfigureAwait (false))
-				return await YahooStockData.LoadAsync (stream, cancellationToken).ConfigureAwait (false);
+			do {
+				using (var response = await client.GetAsync (requestUri, cancellationToken).ConfigureAwait (false)) {
+					using (var stream = await response.Content.ReadAsStreamAsync (cancellationToken).ConfigureAwait (false)) {
+						if (response.IsSuccessStatusCode)
+							return await YahooStockData.LoadAsync (stream, cancellationToken).ConfigureAwait (false);
+
+						if (response.StatusCode == HttpStatusCode.Unauthorized && retries < 5) {
+							await Task.Delay (500).ConfigureAwait (false);
+							retries++;
+							continue;
+						}
+
+						using (var reader = new StreamReader (stream)) {
+							var text = reader.ReadToEnd ();
+							var json = JObject.Parse (text);
+
+							var code = json.SelectToken ("finance.error.code").ToString ();
+							var description = json.SelectToken ("finance.error.description").ToString ();
+
+							throw new Exception ($"{code}: {description}");
+						}
+					}
+				}
+			} while (true);
 		}
 
 		public void Dispose ()
