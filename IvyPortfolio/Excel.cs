@@ -348,7 +348,7 @@ namespace IvyPortfolio
 			cell.CellStyle = boldStyle;
 
 			// Create the cell for the variance
-			var variance = string.Format ("ROUND(({0}!{1}2 - {0}!{2}2) / {0}!{2}2 * 100, 2)", symbol,
+			var variance = string.Format ("ROUND(('{0}'!{1}2 - '{0}'!{2}2) / '{0}'!{2}2 * 100, 2)", symbol,
 										 (char) ('A' + DataColumn.AdjClose), (char) ('A' + column));
 			cell = row.CreateCell ((int) TableColumn.Variance, CellType.Formula);
 			cell.SetCellFormula (variance);
