@@ -32,9 +32,9 @@ namespace IvyPortfolio
 	static class Style
 	{
 		// Note: Used for Conditional Variance formatting
-		//public static readonly XSSFColor CustomLightYellow = new XSSFColor (new byte[] { 250, 230, 181 });
-		//public static readonly XSSFColor CustomLightGreen = new XSSFColor (new byte[] { 191, 222, 204 });
-		//public static readonly XSSFColor CustomLightRed = new XSSFColor (new byte[] { 237, 201, 196 });
+		public static readonly XSSFColor CustomLightYellow = new XSSFColor (new byte[] { 0xFC, 0xE8, 0xB2 });
+		public static readonly XSSFColor CustomLightGreen = new XSSFColor (new byte[] { 0xB7, 0xE1, 0xCD });
+		public static readonly XSSFColor CustomLightRed = new XSSFColor (new byte[] { 0xF4, 0xC7, 0xC3 });
 		public static readonly short LightYellow = IndexedColors.LightYellow.Index;
 		public static readonly short LightGreen = IndexedColors.LightGreen.Index;
 		public static readonly short LightRed = IndexedColors.Rose.Index;

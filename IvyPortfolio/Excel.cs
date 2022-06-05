@@ -204,7 +204,10 @@ namespace IvyPortfolio
 			rule = formatting.CreateConditionalFormattingRule (ComparisonOperator.GreaterThan, "2");
 			pattern = rule.CreatePatternFormatting ();
 			pattern.FillPattern = FillPattern.SolidForeground;
-			pattern.FillBackgroundColor = Style.LightGreen;
+			if (pattern is XSSFPatternFormatting invest)
+				invest.FillBackgroundColorColor = Style.CustomLightGreen;
+			else
+				pattern.FillBackgroundColor = Style.LightGreen;
 
 			rules[index++] = rule;
 
@@ -212,7 +215,10 @@ namespace IvyPortfolio
 			rule = formatting.CreateConditionalFormattingRule (ComparisonOperator.Between, "-2", "2");
 			pattern = rule.CreatePatternFormatting ();
 			pattern.FillPattern = FillPattern.SolidForeground;
-			pattern.FillBackgroundColor = Style.LightYellow;
+			if (pattern is XSSFPatternFormatting neutral)
+				neutral.FillBackgroundColorColor = Style.CustomLightYellow;
+			else
+				pattern.FillBackgroundColor = Style.LightYellow;
 
 			rules[index++] = rule;
 
@@ -220,7 +226,10 @@ namespace IvyPortfolio
 			rule = formatting.CreateConditionalFormattingRule (ComparisonOperator.LessThan, "-2");
 			pattern = rule.CreatePatternFormatting ();
 			pattern.FillPattern = FillPattern.SolidForeground;
-			pattern.FillBackgroundColor = Style.LightRed;
+			if (pattern is XSSFPatternFormatting sell)
+				sell.FillBackgroundColorColor = Style.CustomLightRed;
+			else
+				pattern.FillBackgroundColor = Style.LightRed;
 
 			rules[index++] = rule;
 
