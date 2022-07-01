@@ -85,7 +85,7 @@ namespace IvyPortfolio
 				string[] scopes = { SheetsService.Scope.Spreadsheets };
 
 				var credential = await GoogleWebAuthorizationBroker.AuthorizeAsync (
-					GoogleClientSecrets.Load (stream).Secrets, scopes, Name,
+					GoogleClientSecrets.FromStream (stream).Secrets, scopes, Name,
 					cancellationToken).ConfigureAwait (false);
 
 				// Create Google Sheets API service.
@@ -124,11 +124,12 @@ namespace IvyPortfolio
 
 				for (int rowIndex = 0; rowIndex < sheet.LastRowNum; rowIndex++) {
 					var row = sheet.GetRow (rowIndex);
+					int columnIndex = 0;
 
 					maxColumnIndex = Math.Max (maxColumnIndex, row.LastCellNum);
-					values.Add (new object[row.LastCellNum]);
+					values.Add (new object[maxColumnIndex]);
 
-					for (int columnIndex = 0; columnIndex < row.LastCellNum; columnIndex++) {
+					while (columnIndex < row.LastCellNum) {
 						var cell = row.GetCell (columnIndex, MissingCellPolicy.RETURN_BLANK_AS_NULL);
 						object value;
 
@@ -143,8 +144,11 @@ namespace IvyPortfolio
 							value = string.Empty;
 						}
 
-						values[rowIndex][columnIndex] = value;
+						values[rowIndex][columnIndex++] = value;
 					}
+
+					while (columnIndex < maxColumnIndex)
+						values[rowIndex][columnIndex++] = string.Empty;
 				}
 
 				// Update the values in the Google Sheet
