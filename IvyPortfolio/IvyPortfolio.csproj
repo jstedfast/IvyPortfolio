@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="Google.Apis.Sheets.v4" Version="1.67.0.3148" />
-    <PackageReference Include="NPOI" Version="2.6.2" />
+    <PackageReference Include="NPOI" Version="2.7.0" />
   </ItemGroup>
 
 </Project>
